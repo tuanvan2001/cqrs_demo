@@ -17,7 +17,10 @@ import (
 
 // GET /api/v1/locations - Lấy tất cả location (Redisearch)
 func GetLocations(c *gin.Context) {
-	res, err := database.Rdb.Do(context.Background(),
+	ctx, cancel := database.GetRedisContext()
+	defer cancel()
+	
+	res, err := database.Rdb.Do(ctx,
 		"FT.SEARCH", "idx:location", "*", "RETURN", "6", "id", "name", "address", "status", "created_at", "updated_at").Result()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -30,7 +33,11 @@ func GetLocations(c *gin.Context) {
 func GetLocation(c *gin.Context) {
 	id := c.Param("id")
 	key := "location:" + id
-	val, err := database.Rdb.Do(context.Background(), "JSON.GET", key).Result()
+	
+	ctx, cancel := database.GetRedisContext()
+	defer cancel()
+	
+	val, err := database.Rdb.Do(ctx, "JSON.GET", key).Result()
 	if err != nil || val == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
 		return
@@ -45,7 +52,11 @@ func CreateLocation(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	id, err := database.Rdb.Incr(context.Background(), "location:id").Result()
+	
+	ctx, cancel := database.GetRedisContext()
+	defer cancel()
+	
+	id, err := database.Rdb.Incr(ctx, "location:id").Result()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -59,7 +70,7 @@ func CreateLocation(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	_, err = database.Rdb.Do(context.Background(), "JSON.SET", key, "$", string(locBytes)).Result()
+	_, err = database.Rdb.Do(ctx, "JSON.SET", key, "$", string(locBytes)).Result()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -76,6 +87,10 @@ func UpdateLocation(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	
+	ctx, cancel := database.GetRedisContext()
+	defer cancel()
+	
 	parsedID, _ := strconv.ParseUint(id, 10, 64)
 	loc.ID = uint(parsedID)
 	loc.UpdatedAt = time.Now()
@@ -84,7 +99,7 @@ func UpdateLocation(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	_, err = database.Rdb.Do(context.Background(), "JSON.SET", key, "$", string(locBytes)).Result()
+	_, err = database.Rdb.Do(ctx, "JSON.SET", key, "$", string(locBytes)).Result()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -96,9 +111,17 @@ func UpdateLocation(c *gin.Context) {
 func DeleteLocation(c *gin.Context) {
 	id := c.Param("id")
 	key := "location:" + id
-	_, err := database.Rdb.Del(context.Background(), key).Result()
+	
+	ctx, cancel := database.GetRedisContext()
+	defer cancel()
+	
+	_, err := database.Rdb.Del(ctx, key).Result()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Location deleted successfully"})
+})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Deleted"})
