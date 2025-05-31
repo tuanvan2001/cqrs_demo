@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -24,7 +25,7 @@ type Config struct {
 // Connect to MySQL database
 func Connect() {
 	config := Config{
-		Host:     getEnv("DB_HOST", "localhost"),
+		Host:     getEnv("DB_HOST", "10.73.48.108"),
 		Port:     getEnv("DB_PORT", "3306"),
 		User:     getEnv("DB_USER", "root"),
 		Password: getEnv("DB_PASSWORD", "Tuan123"),
@@ -48,7 +49,23 @@ func Connect() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
+	// Configure connection pool
+	sqlDB, err := DB.DB()
+	if err != nil {
+		log.Fatal("Failed to get underlying sql.DB from gorm.DB:", err)
+	}
+
+	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool
+	sqlDB.SetMaxIdleConns(10)
+
+	// SetMaxOpenConns sets the maximum number of open connections to the database
+	sqlDB.SetMaxOpenConns(120)
+
+	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
 	log.Println("Database connected successfully!")
+	log.Printf("Connection pool configured: MaxIdle=%d, MaxOpen=%d", 10, 120)
 }
 
 // Get environment variable with default value

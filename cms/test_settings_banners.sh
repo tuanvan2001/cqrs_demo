@@ -167,3 +167,8 @@ echo -e "\n=== Cleaning up ==="
 kill $SERVER_PID
 echo "Server stopped."
 echo "Test completed successfully!"
+
+
+CREATE USER 'root'@'%' IDENTIFIED BY 'Tuan123';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
